@@ -3,22 +3,27 @@ name: MR Review Notifications
 on:
   pull_request:
     types: [ready_for_review, closed]
+  issue_comment:
+    types: [created]
 
 jobs:
   notify-and-react:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check if PR is ready for review or merged
+     - name: Check if PR is ready for review, merged, or has a new comment
         id: pr_status
         run: |
           if [[ "${{ github.event.action }}" == "ready_for_review" ]]; then
             echo "PR_READY=true" >> $GITHUB_ENV
           elif [[ "${{ github.event.action }}" == "closed" ]] && [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
             echo "PR_APPROVED=true" >> $GITHUB_ENV
+          elif [[ "${{ github.event.issue.pull_request }}" != "" ]] && [[ "${{ github.event.comment }}" != "" ]]; then
+            echo "PR_COMMENT=true" >> $GITHUB_ENV
           else
             echo "PR_READY=false" >> $GITHUB_ENV
             echo "PR_APPROVED=false" >> $GITHUB_ENV
+            echo "PR_COMMENT=false" >> $GITHUB_ENV
           fi
 
       - name: Get Slack User ID to mention in the notification
@@ -49,7 +54,7 @@ jobs:
           echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
 
       - name: Retrieve Slack message timestamp
-        if: env.PR_APPROVED == 'true'
+        if: env.PR_APPROVED == 'true' || env.PR_COMMENT == 'true'
         id: retrieve_ts
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -76,3 +81,20 @@ jobs:
                  "timestamp": "'"$SLACK_MESSAGE_TS"'",
                  "name": "white_check_mark"
                }' https://slack.com/api/reactions.add
+
+  - name: Reply in thread to initial message
+        if: env.PR_COMMENT == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_MESSAGE_TS: ${{ env.SLACK_MESSAGE_TS }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_USER: ${{ github.event.comment.user.login }}
+        run: |
+          curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+               -H 'Content-type: application/json' \
+               --data '{
+                 "channel": "'"$SLACK_CHANNEL"'",
+                 "text": "New comment by <@${COMMENT_USER}>: ${COMMENT_BODY}",
+                 "thread_ts": "'"$SLACK_MESSAGE_TS"'"
+               }' https://slack.com/api/chat.postMessage
