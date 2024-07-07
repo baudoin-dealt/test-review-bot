@@ -3,7 +3,7 @@ name: MR Review Notifications
 on:
   pull_request:
     types: [ready_for_review, closed]
-  issue_comment:
+  pull_request_review:
     types: [created]
 
 jobs:
@@ -37,12 +37,8 @@ jobs:
         run: |
           github_user="${{ github.event.pull_request.user.login }}"
           user_mapping=$(cat user_mapping.json)
-          echo "User Mapping: $user_mapping"  # Echo the user mapping to verify
           slack_id=$(echo "$user_mapping" | jq -r --arg gh_user "$github_user" '.[$gh_user]')
-          echo "GitHub User: $github_user"  # Echo the GitHub username to verify
-          echo "Slack User ID: $slack_id"  # Echo the Slack user ID to verify
           echo "SLACK_USER_ID=$slack_id" >> $GITHUB_ENV
-          echo "$SLACK_USER_ID"
         shell: bash
 
       - name: Send notification to Slack
@@ -57,13 +53,13 @@ jobs:
                        -H 'Content-type: application/json' \
                        --data '{
                          "channel": "'"$SLACK_CHANNEL"'",
-                         "text": "A pull request is ready for review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> by <@'"$SLACK_USER_ID"'>"
+                         "text": "A review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> is requested by <@'"$SLACK_USER_ID"'>"
                        }' https://slack.com/api/chat.postMessage)
           ts=$(echo $response | jq -r '.ts')
           echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
 
       - name: Retrieve Slack message timestamp
-        if: env.PR_APPROVED == 'true'
+        if: env.PR_APPROVED == 'true' || env.PR_COMMENT == 'true'
         id: retrieve_ts
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
