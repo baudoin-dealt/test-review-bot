@@ -26,12 +26,17 @@ jobs:
             echo "PR_COMMENT=false" >> $GITHUB_ENV
           fi
 
+      - name: Decode User Mapping
+        run: |
+          echo ${{ secrets.USER_MAPPING_BASE64 }} | base64 --decode > user_mapping.json
+        shell: bash
+
       - name: Get Slack User ID to mention in the notification
         if: env.PR_READY == 'true'
         id: slack_id
         run: |
           github_user="${{ github.event.pull_request.user.login }}"
-          user_mapping='${{ secrets.USER_MAPPING }}'
+          user_mapping=$(cat user_mapping.json)
           slack_id=$(echo "$user_mapping" | jq -r --arg gh_user "$github_user" '.[$gh_user]')
           echo "SLACK_USER_ID=$slack_id" >> $GITHUB_ENV
         shell: bash
