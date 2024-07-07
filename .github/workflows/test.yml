@@ -83,14 +83,14 @@ jobs:
                }' https://slack.com/api/reactions.add
 
       - name: Reply in thread to initial message
-            if: env.PR_COMMENT == 'true'
-            env:
-              SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-              SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
-              SLACK_MESSAGE_TS: ${{ env.SLACK_MESSAGE_TS }}
-              COMMENT_BODY: ${{ github.event.comment.body }}
-              COMMENT_USER: ${{ github.event.comment.user.login }}
-            run: |
+        if: env.PR_COMMENT == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_MESSAGE_TS: ${{ env.SLACK_MESSAGE_TS }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_USER: ${{ github.event.comment.user.login }}
+        run: |
               curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
                   -H 'Content-type: application/json' \
                   --data '{
