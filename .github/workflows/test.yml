@@ -1,0 +1,64 @@
+name: MR Review Notifications
+
+on:
+  pull_request:
+    types: [ready_for_review, closed]
+
+jobs:
+  notify-and-react:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if PR is ready for review or merged
+        id: pr_status
+        run: |
+          if [[ "${{ github.event.action }}" == "ready_for_review" ]]; then
+            echo "PR_READY=true" >> $GITHUB_ENV
+          elif [[ "${{ github.event.action }}" == "closed" ]] && [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
+            echo "PR_APPROVED=true" >> $GITHUB_ENV
+          else
+            echo "PR_READY=false" >> $GITHUB_ENV
+            echo "PR_APPROVED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Get Slack User ID to mention in the notification
+        if: env.PR_READY == 'true'
+        id: slack_id
+        run: |
+          github_user="${{ github.event.pull_request.user.login }}"
+          user_mapping='${{ secrets.USER_MAPPING }}'
+          slack_id=$(echo "$user_mapping" | jq -r --arg gh_user "$github_user" '.[$gh_user]')
+          echo "SLACK_USER_ID=$slack_id" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Send notification to Slack
+        if: env.PR_READY == 'true'
+        id: send_slack_notification
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_USER_ID: ${{ env.SLACK_USER_ID }}
+        run: |
+          response=$(curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+                       -H 'Content-type: application/json' \
+                       --data '{
+                         "channel": "'"$SLACK_CHANNEL"'",
+                         "text": "A pull request is ready for review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> by <@${SLACK_USER_ID}>"
+                       }' https://slack.com/api/chat.postMessage)
+          ts=$(echo $response | jq -r '.ts')
+          echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
+
+      - name: Add reaction to Slack message
+        if: env.PR_APPROVED == 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          SLACK_MESSAGE_TS: ${{ env.SLACK_MESSAGE_TS }}
+        run: |
+          curl -s -X POST -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+               -H 'Content-type: application/json' \
+               --data '{
+                 "channel": "'"$SLACK_CHANNEL"'",
+                 "timestamp": "'"$SLACK_MESSAGE_TS"'",
+                 "name": "white_check_mark"
+               }' https://slack.com/api/reactions.add
