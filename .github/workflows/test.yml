@@ -28,7 +28,7 @@ jobs:
 
       - name: Decode User Mapping
         run: |
-          echo ${{ secrets.USER_MAPPING_BASE64 }} | base64 --decode > user_mapping.json
+          echo ${{ secrets.USER_MAPPING }} | base64 --decode > user_mapping.json
         shell: bash
 
       - name: Get Slack User ID to mention in the notification
