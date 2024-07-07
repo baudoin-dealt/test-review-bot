@@ -39,6 +39,7 @@ jobs:
           user_mapping=$(cat user_mapping.json)
           slack_id=$(echo "$user_mapping" | jq -r --arg gh_user "$github_user" '.[$gh_user]')
           echo "SLACK_USER_ID=$slack_id" >> $GITHUB_ENV
+          echo $SLACK_USER_ID
         shell: bash
 
       - name: Send notification to Slack
