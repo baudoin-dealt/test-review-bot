@@ -39,7 +39,7 @@ jobs:
           user_mapping=$(cat user_mapping.json)
           slack_id=$(echo "$user_mapping" | jq -r --arg gh_user "$github_user" '.[$gh_user]')
           echo "SLACK_USER_ID=$slack_id" >> $GITHUB_ENV
-          echo $SLACK_USER_ID
+          echo "$SLACK_USER_ID"
         shell: bash
 
       - name: Send notification to Slack
@@ -54,7 +54,7 @@ jobs:
                        -H 'Content-type: application/json' \
                        --data '{
                          "channel": "'"$SLACK_CHANNEL"'",
-                         "text": "A pull request is ready for review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> by <@${SLACK_USER_ID}>"
+                         "text": "A pull request is ready for review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> by <@$SLACK_USER_ID>"
                        }' https://slack.com/api/chat.postMessage)
           ts=$(echo $response | jq -r '.ts')
           echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
