@@ -48,6 +48,20 @@ jobs:
           ts=$(echo $response | jq -r '.ts')
           echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
 
+      - name: Retrieve Slack message timestamp
+        if: env.PR_APPROVED == 'true'
+        id: retrieve_ts
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          messages=$(curl -s -X GET -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+                       -H 'Content-type: application/json' \
+                       "https://slack.com/api/conversations.history?channel=${SLACK_CHANNEL}&limit=1000")
+          ts=$(echo $messages | jq -r --arg pr_url "$PR_URL" '.messages[] | select(.text | contains($pr_url)) | .ts')
+          echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
+
       - name: Add reaction to Slack message
         if: env.PR_APPROVED == 'true'
         env:
