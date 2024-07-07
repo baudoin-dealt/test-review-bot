@@ -35,7 +35,6 @@ jobs:
         if: env.PR_READY == 'true'
         id: slack_id
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
           github_user="${{ github.event.pull_request.user.login }}"
           user_mapping=$(cat user_mapping.json)
           echo "User Mapping: $user_mapping"  # Echo the user mapping to verify
@@ -58,7 +57,7 @@ jobs:
                        -H 'Content-type: application/json' \
                        --data '{
                          "channel": "'"$SLACK_CHANNEL"'",
-                         "text": "A pull request is ready for review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> by <@$SLACK_USER_ID>"
+                         "text": "A pull request is ready for review: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}> by <@{$SLACK_USER_ID}>"
                        }' https://slack.com/api/chat.postMessage)
           ts=$(echo $response | jq -r '.ts')
           echo "SLACK_MESSAGE_TS=$ts" >> $GITHUB_ENV
