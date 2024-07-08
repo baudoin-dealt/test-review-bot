@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [ready_for_review, closed]
   pull_request_review:
-    types: [sumbitted]
+    types: [sumbitted, edited]
 
 jobs:
   notify-and-react:
@@ -18,7 +18,7 @@ jobs:
             echo "PR_READY=true" >> $GITHUB_ENV
           elif [[ "${{ github.event.action }}" == "closed" ]] && [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
             echo "PR_APPROVED=true" >> $GITHUB_ENV
-          elif [[ "${{ github.event.issue.pull_request }}" != "" ]] && [[ "${{ github.event.comment }}" != "" ]]; then
+          elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
             echo "PR_COMMENT=true" >> $GITHUB_ENV
           else
             echo "PR_READY=false" >> $GITHUB_ENV
